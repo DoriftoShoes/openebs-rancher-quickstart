@@ -3,6 +3,14 @@ export curlimage=appropriate/curl
 export jqimage=stedolan/jq
 export rancher_server_ip='${server_address}'
 
+# OpenEBS iscsci fix
+apt install open-iscsi
+systemctl enable iscsid && sudo systemctl start iscsid
+modprobe iscsi_tcp
+
+#OpenEBS unmount disks
+for i in `ls -1 /mnt`; do umount /mnt/$i; done
+
 if [ `command -v curl` ]; then
   curl -sL https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh
 elif [ `command -v wget` ]; then

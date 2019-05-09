@@ -43,7 +43,23 @@ variable "region" {
   default = "ams3"
 }
 
-variable "size" {
+variable "server_size" {
+  default = "s-2vcpu-4gb"
+}
+
+variable "all_size" {
+  default = "s-2vcpu-4gb"
+}
+
+variable "controlplane_size" {
+  default = "s-2vcpu-4gb"
+}
+
+variable "worker_size" {
+  default = "s-2vcpu-4gb"
+}
+
+variable "etcd_size" {
   default = "s-2vcpu-4gb"
 }
 
@@ -64,7 +80,7 @@ resource "digitalocean_droplet" "rancherserver" {
   image     = "ubuntu-18-04-x64"
   name      = "${var.prefix}-rancherserver"
   region    = "${var.region}"
-  size      = "${var.size}"
+  size      = "${var.server_size}"
   user_data = "${data.template_file.userdata_server.rendered}"
   ssh_keys  = "${var.ssh_keys}"
 }
@@ -74,7 +90,7 @@ resource "digitalocean_droplet" "rancheragent-all" {
   image     = "ubuntu-18-04-x64"
   name      = "${var.prefix}-rancheragent-${count.index}-all"
   region    = "${var.region}"
-  size      = "${var.size}"
+  size      = "${var.all_size}"
   user_data = "${data.template_file.userdata_agent.rendered}"
   ssh_keys  = "${var.ssh_keys}"
 }
@@ -84,7 +100,7 @@ resource "digitalocean_droplet" "rancheragent-etcd" {
   image     = "ubuntu-18-04-x64"
   name      = "${var.prefix}-rancheragent-${count.index}-etcd"
   region    = "${var.region}"
-  size      = "${var.size}"
+  size      = "${var.etcd_size}"
   user_data = "${data.template_file.userdata_agent.rendered}"
   ssh_keys  = "${var.ssh_keys}"
 }
@@ -94,19 +110,44 @@ resource "digitalocean_droplet" "rancheragent-controlplane" {
   image     = "ubuntu-18-04-x64"
   name      = "${var.prefix}-rancheragent-${count.index}-controlplane"
   region    = "${var.region}"
-  size      = "${var.size}"
+  size      = "${var.controlplane_size}"
   user_data = "${data.template_file.userdata_agent.rendered}"
   ssh_keys  = "${var.ssh_keys}"
 }
 
+resource "digitalocean_volume" "rancheragent-worker-a" {
+  count                   = "${var.count_agent_worker_nodes}"
+  region                  = "${var.region}"
+  name                    = "${var.prefix}-rancheragent-${count.index}-worker-a"
+  size                    = 100
+  description             = "Rancheragent worker volume A"
+}
+
+resource "digitalocean_volume" "rancheragent-worker-b" {
+  count                   = "${var.count_agent_worker_nodes}"
+  region                  = "${var.region}"
+  name                    = "${var.prefix}-rancheragent-${count.index}-worker-b"
+  size                    = 100
+  description             = "Rancheragent worker volume B"
+}
+
+resource "digitalocean_volume" "rancheragent-worker-c" {
+  count                   = "${var.count_agent_worker_nodes}"
+  region                  = "${var.region}"
+  name                    = "${var.prefix}-rancheragent-${count.index}-worker-c"
+  size                    = 100
+  description             = "Rancheragent worker volume C"
+}
+
 resource "digitalocean_droplet" "rancheragent-worker" {
-  count     = "${var.count_agent_worker_nodes}"
-  image     = "ubuntu-18-04-x64"
-  name      = "${var.prefix}-rancheragent-${count.index}-worker"
-  region    = "${var.region}"
-  size      = "${var.size}"
-  user_data = "${data.template_file.userdata_agent.rendered}"
-  ssh_keys  = "${var.ssh_keys}"
+  count      = "${var.count_agent_worker_nodes}"
+  image      = "ubuntu-18-04-x64"
+  name       = "${var.prefix}-rancheragent-${count.index}-worker"
+  region     = "${var.region}"
+  size       = "${var.worker_size}"
+  user_data  = "${data.template_file.userdata_agent.rendered}"
+  ssh_keys   = "${var.ssh_keys}"
+  volume_ids = ["${element(digitalocean_volume.rancheragent-worker-a.*.id, count.index)}","${element(digitalocean_volume.rancheragent-worker-b.*.id, count.index)}","${element(digitalocean_volume.rancheragent-worker-c.*.id, count.index)}"]
 }
 
 data "template_file" "userdata_server" {
